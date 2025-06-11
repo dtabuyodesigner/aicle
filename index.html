@@ -1,0 +1,288 @@
+<!-- index.html (Versión todo-en-uno para vista previa) -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Centros AICLE - Canarias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Contenido de css/style.css */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .sortable .arrow {
+            display: inline-block;
+            vertical-align: middle;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+
+        .sortable.asc .arrow {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 4px solid currentColor;
+            opacity: 1;
+        }
+
+        .sortable.desc .arrow {
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid currentColor;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Buscador de Centros AICLE</h1>
+            <p class="text-gray-600">Curso 2025-2026 - Canarias</p>
+        </header>
+
+        <!-- Panel de Filtros -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                <!-- Búsqueda por Nombre -->
+                <div class="col-span-1 md:col-span-2 lg:col-span-4 xl:col-span-2">
+                    <label for="search-nombre" class="block text-sm font-medium text-gray-700">Buscar por nombre</label>
+                    <input type="text" id="search-nombre" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ej: CEIP Giner de los Ríos...">
+                </div>
+                <!-- Filtro por Isla -->
+                <div>
+                    <label for="filter-isla" class="block text-sm font-medium text-gray-700">Isla</label>
+                    <select id="filter-isla" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <!-- Filtro por Idioma -->
+                <div>
+                    <label for="filter-idioma" class="block text-sm font-medium text-gray-700">Idioma</label>
+                    <select id="filter-idioma" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <!-- Filtro por Modalidad -->
+                <div>
+                    <label for="filter-modalidad" class="block text-sm font-medium text-gray-700">Modalidad</label>
+                    <select id="filter-modalidad" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <!-- Botón Limpiar -->
+                <div class="flex items-end">
+                    <button id="clear-filters" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md text-sm">
+                        Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de Resultados -->
+        <div class="text-center mb-4 text-gray-600">
+            <p>Mostrando <span id="results-count" class="font-bold">0</span> centros.</p>
+        </div>
+        
+        <!-- Tabla de Resultados -->
+        <div class="overflow-x-auto bg-white rounded-lg shadow-md">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-sort="nombre">Centro <span class="arrow"></span></th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-sort="isla">Isla <span class="arrow"></span></th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-sort="provincia">Provincia <span class="arrow"></span></th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-sort="idioma">Idioma <span class="arrow"></span></th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-sort="modalidad">Modalidad <span class="arrow"></span></th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                    </tr>
+                </thead>
+                <tbody id="results-table" class="bg-white divide-y divide-gray-200">
+                    <!-- Las filas se insertarán aquí con JavaScript -->
+                     <tr><td colspan="6" class="text-center text-gray-500 p-4">Cargando datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="text-center mt-8 text-sm text-gray-500">
+            <p>Proyecto creado para la extracción y visualización de datos públicos.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Contenido de js/app.js
+        document.addEventListener('DOMContentLoaded', () => {
+            // Referencias a elementos del DOM
+            const elements = {
+                tableBody: document.getElementById('results-table'),
+                resultsCount: document.getElementById('results-count'),
+                searchNombre: document.getElementById('search-nombre'),
+                filterIsla: document.getElementById('filter-isla'),
+                filterIdioma: document.getElementById('filter-idioma'),
+                filterModalidad: document.getElementById('filter-modalidad'),
+                clearFiltersBtn: document.getElementById('clear-filters'),
+                sortableHeaders: document.querySelectorAll('.sortable')
+            };
+
+            let allData = [];
+            let currentSort = {
+                column: 'nombre',
+                direction: 'asc'
+            };
+            
+            // --- URL de los datos ---
+            // Para que funcione en GitHub Pages, la URL debe ser absoluta.
+            // Reemplaza 'tu-usuario' y 'tu-repositorio' con tus datos de GitHub.
+            const dataUrl = 'https://raw.githubusercontent.com/DaniEsteban/datos/main/centros.json';
+
+
+            // --- Carga y Preparación de Datos ---
+            async function loadData() {
+                try {
+                    // Usamos la URL completa para el fetch
+                    const response = await fetch(dataUrl);
+                    if (!response.ok) {
+                        throw new Error(`Error de red! status: ${response.status}`);
+                    }
+                    allData = await response.json();
+                    if (!Array.isArray(allData)) {
+                       throw new Error("El archivo JSON no contiene un array de datos.");
+                    }
+                    populateFilters(allData);
+                    applyFilters();
+                } catch (error) {
+                    console.error("No se pudo cargar o procesar el archivo de datos:", error);
+                    elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar los datos. Revisa la URL en el script y asegúrate de que el archivo JSON esté en tu repositorio de GitHub.</td></tr>`;
+                }
+            }
+
+            function populateFilters(data) {
+                const islas = [...new Set(data.map(item => item.isla))].sort();
+                const idiomas = [...new Set(data.map(item => item.idioma))].sort();
+                const modalidades = [...new Set(data.map(item => item.modalidad))].sort();
+
+                elements.filterIsla.innerHTML = '<option value="">Todas</option>';
+                elements.filterIdioma.innerHTML = '<option value="">Todos</option>';
+                elements.filterModalidad.innerHTML = '<option value="">Todas</option>';
+
+                islas.forEach(isla => {
+                    if (isla) elements.filterIsla.add(new Option(isla, isla));
+                });
+                idiomas.forEach(idioma => {
+                    if (idioma) elements.filterIdioma.add(new Option(idioma, idioma));
+                });
+                modalidades.forEach(modalidad => {
+                   if (modalidad) elements.filterModalidad.add(new Option(modalidad, modalidad));
+                });
+            }
+
+            // --- Lógica de Filtrado y Renderizado ---
+            function applyFilters() {
+                const filters = {
+                    nombre: elements.searchNombre.value.toLowerCase(),
+                    isla: elements.filterIsla.value,
+                    idioma: elements.filterIdioma.value,
+                    modalidad: elements.filterModalidad.value
+                };
+
+                let filteredData = allData.filter(item => {
+                    const nombreMatch = item.nombre.toLowerCase().includes(filters.nombre);
+                    const islaMatch = filters.isla ? item.isla === filters.isla : true;
+                    const idiomaMatch = filters.idioma ? item.idioma === filters.idioma : true;
+                    const modalidadMatch = filters.modalidad ? item.modalidad === filters.modalidad : true;
+                    return nombreMatch && islaMatch && idiomaMatch && modalidadMatch;
+                });
+
+                sortData(filteredData);
+                renderTable(filteredData);
+            }
+
+            function renderTable(data) {
+                elements.tableBody.innerHTML = '';
+                if (data.length === 0) {
+                    elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 p-4">No se encontraron centros con los filtros seleccionados.</td></tr>`;
+                } else {
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-gray-50';
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${item.nombre}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.isla}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.provincia}</td>
+                            <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${item.idioma}</span></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.modalidad}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.codigo}</td>
+                        `;
+                        elements.tableBody.appendChild(row);
+                    });
+                }
+                elements.resultsCount.textContent = data.length;
+            }
+
+            // --- Lógica de Ordenación ---
+            function sortData(data) {
+                data.sort((a, b) => {
+                    const valA = a[currentSort.column] || '';
+                    const valB = b[currentSort.column] || '';
+
+                    if (valA < valB) {
+                        return currentSort.direction === 'asc' ? -1 : 1;
+                    }
+                    if (valA > valB) {
+                        return currentSort.direction === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            function handleSort(e) {
+                const newColumn = e.target.closest('.sortable').dataset.sort;
+
+                if (currentSort.column === newColumn) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.column = newColumn;
+                    currentSort.direction = 'asc';
+                }
+
+                updateSortIcons();
+                applyFilters();
+            }
+
+            function updateSortIcons() {
+                elements.sortableHeaders.forEach(header => {
+                    header.classList.remove('asc', 'desc');
+                    if (header.dataset.sort === currentSort.column) {
+                        header.classList.add(currentSort.direction);
+                    }
+                });
+            }
+
+            // --- Event Listeners ---
+            elements.searchNombre.addEventListener('input', applyFilters);
+            elements.filterIsla.addEventListener('change', applyFilters);
+            elements.filterIdioma.addEventListener('change', applyFilters);
+            elements.filterModalidad.addEventListener('change', applyFilters);
+            elements.sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
+
+            elements.clearFiltersBtn.addEventListener('click', () => {
+                elements.searchNombre.value = '';
+                elements.filterIsla.value = '';
+                elements.filterIdioma.value = '';
+                elements.filterModalidad.value = '';
+                applyFilters();
+            });
+
+            // --- Inicialización ---
+            loadData();
+            updateSortIcons();
+        });
+    </script>
+</body>
+</html>
