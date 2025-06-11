@@ -1,3 +1,9 @@
+Buscador de Centros AICLE - Canarias
+Este proyecto es una aplicación web interactiva que permite buscar y filtrar los centros educativos de Canarias que participan en el Programa AICLE, basándose en los listados definitivos para el curso 2025-2026.
+
+La aplicación está construida con HTML, CSS y JavaScript para la parte web, y utiliza un script de Python para extraer los datos desde los documentos PDF oficiales.
+
+Estructura del Proyecto
 /
 |-- /css/
 |   |-- style.css         # Hoja de estilos
@@ -44,13 +50,32 @@ python extractor.py
 
 Si todo va bien, verás un mensaje de éxito y se creará el archivo data/centros.json.
 
-Paso 3: Probar la Web Localmente
-Simplemente abre el archivo index.html en tu navegador web (Firefox, Chrome, etc.). La página debería cargar y mostrar los filtros y la tabla con todos los centros.
+Paso 3: Probar la Web Localmente (¡Importante!)
+Para que la web funcione en tu ordenador, no puedes simplemente hacer doble clic en el archivo index.html. Por motivos de seguridad, los navegadores bloquean la carga de archivos locales (como el centros.json) cuando la página se abre directamente desde el disco.
+
+Necesitas simular un entorno de servidor web. ¡Es muy fácil con Python!
+
+Abre una terminal en la carpeta raíz de tu proyecto (donde está index.html).
+
+Si creaste un entorno virtual, asegúrate de que esté activado (source venv/bin/activate o similar).
+
+Ejecuta el siguiente comando para iniciar un servidor web local:
+
+python -m http.server
+
+La terminal te mostrará un mensaje como Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
+
+Abre tu navegador web y ve a la siguiente dirección:
+
+http://localhost:8000
+
+¡Listo! Ahora verás tu aplicación web funcionando perfectamente en tu máquina local. Para detener el servidor, vuelve a la terminal y pulsa Ctrl + C.
 
 Cómo Publicar en GitHub Pages
-Sigue estos pasos para subir tu proyecto a GitHub y publicarlo como una web online gratuita.
+Una vez que has comprobado que todo funciona en local, sigue estos pasos para publicarlo en internet.
 
-Crea un Repositorio en GitHub:
+Paso 1: Crea un Repositorio en GitHub
+(Este primer paso es común para ambas opciones).
 
 Ve a tu cuenta de GitHub y haz clic en "New repository".
 
@@ -58,27 +83,43 @@ Dale un nombre (ej. buscador-aicle-canarias).
 
 Asegúrate de que sea Público.
 
-No inicialices con un README, .gitignore o licencia, ya que nosotros los proporcionaremos.
+No inicialices con un README, .gitignore o licencia.
 
-Copia la URL del repositorio que te proporciona GitHub (ej. https://github.com/tu-usuario/buscador-aicle-canarias.git).
+Haz clic en "Create repository".
 
-Sube tus Archivos al Repositorio:
+Paso 2: Sube tus Archivos
+Elige la opción que prefieras:
 
-Abre una terminal en la carpeta de tu proyecto.
+Opción A: Usando GitHub Desktop (Recomendado si eres nuevo)
+Abre la aplicación GitHub Desktop.
 
-Inicializa Git, añade los archivos, haz tu primer commit y enlaza tu repositorio local con el de GitHub.
+Ve a File > Add Local Repository....
+
+Haz clic en Choose... y selecciona tu carpeta del proyecto (ej. AICLE2). Haz clic en Add Repository.
+
+La aplicación analizará los archivos. En la parte inferior izquierda, escribe un resumen del commit, por ejemplo, Versión inicial del proyecto, y haz clic en Commit to main.
+
+Ahora, en la parte superior, verás un botón que dice Publish repository. Haz clic en él.
+
+Asegúrate de que el nombre es correcto y desmarca la opción "Keep this code private". Haz clic en Publish repository.
+
+Opción B: Usando la Línea de Comandos
+Abre una terminal en la carpeta raíz de tu proyecto.
+
+Copia la URL de tu repositorio recién creado.
+
+Ejecuta los siguientes comandos:
 
 git init
 git add .
 git commit -m "Versión inicial del proyecto"
 git branch -M main
-git remote add origin https://github.com/tu-usuario/buscador-aicle-canarias.git
+git remote add origin https://github.com/tu-usuario/tu-repositorio.git
 git push -u origin main
 
-(Reemplaza la URL con la tuya).
+(Reemplaza la URL https://github.com/tu-usuario/tu-repositorio.git por la tuya).
 
-Activa GitHub Pages:
-
+Paso 3: Activa GitHub Pages
 En la página de tu repositorio de GitHub, ve a "Settings" (Configuración).
 
 En el menú de la izquierda, selecciona "Pages".
@@ -89,10 +130,9 @@ Asegúrate de que la rama seleccionada sea main y la carpeta sea /(root).
 
 Haz clic en "Save".
 
-¡Listo!
-
+Paso 4: ¡Listo!
 GitHub tardará uno o dos minutos en construir y publicar tu página.
 
-En la misma sección de "Pages", aparecerá un enlace a tu web publicada, algo como: https://tu-usuario.github.io/buscador-aicle-canarias/.
+En la misma sección de "Pages", aparecerá un enlace a tu web publicada, algo como: https://tu-usuario.github.io/tu-repositorio/.
 
 ¡Ya tienes tu buscador online y compartible!
