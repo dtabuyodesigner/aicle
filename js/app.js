@@ -12,7 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
         exportCsvBtn: document.getElementById('export-csv'),
         sortableHeaders: document.querySelectorAll('.sortable'),
         islandStatsContainer: document.getElementById('island-stats'),
-        mapContainer: document.getElementById('map')
+        mapContainer: document.getElementById('map'),
+        // NUEVO: Referencias para la ventana modal
+        helpButton: document.getElementById('help-button'),
+        helpModalOverlay: document.getElementById('help-modal-overlay'),
+        closeModalButton: document.getElementById('close-modal-button'),
+        okModalButton: document.getElementById('ok-modal-button')
     };
 
     // --- Estado de la aplicación ---
@@ -20,11 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let fuse;
     let filteredDataCache = [];
     let map;
-    let markersLayer; // Se inicializará más tarde
+    let markersLayer;
     let currentSort = { column: 'nombre', direction: 'asc' };
-    
-    // URL correcta y definitiva al archivo de datos en tu repositorio
-    const dataUrl = 'https://raw.githubusercontent.com/dtabuyodesigner/aicle/main/data/centros_geocoded.json';
+    const dataUrl = 'data/centros_geocoded.json'; 
 
     // --- Funciones de inicialización ---
     async function initializeApp() {
@@ -33,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await loadData();
             setupFuse();
-            displayIslandStats(allData); // Se movió aquí para que siempre se muestre
+            displayIslandStats(allData);
             populateFilters();
             applyFiltersAndRender();
             setupEventListeners();
@@ -46,14 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadData() {
         const response = await fetch(dataUrl);
-        if (!response.ok) {
-            // Este error se mostrará si la URL es incorrecta o el archivo no existe
-            throw new Error(`Error de red: ${response.status}. No se pudo encontrar el archivo en ${dataUrl}`);
-        }
+        if (!response.ok) throw new Error(`Error de red: ${response.status}`);
         allData = await response.json();
-        if (!Array.isArray(allData)) {
-            throw new Error("El archivo JSON no es un array válido.");
-        }
+        if (!Array.isArray(allData)) throw new Error("El archivo JSON no es un array válido.");
     }
 
     function setupFuse() {
@@ -62,12 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initializeMap() {
-        map = L.map(elements.mapContainer).setView([28.4636, -16.2518], 8); // Centrado en Canarias
+        map = L.map(elements.mapContainer).setView([28.4636, -16.2518], 8);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-        // CORRECCIÓN: Usamos L.featureGroup() en lugar de L.layerGroup()
-        // L.featureGroup() SÍ tiene el método getBounds() que necesitamos.
         markersLayer = L.featureGroup().addTo(map);
     }
     
@@ -131,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             map.fitBounds(markersLayer.getBounds(), { padding: [50, 50], maxZoom: 14 });
         } else {
-            // Si no hay resultados geocodificados, volvemos a la vista general de Canarias
             map.setView([28.4636, -16.2518], 8);
         }
     }
@@ -174,12 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupEventListeners() {
+        // Eventos de filtros y acciones
         elements.searchNombre.addEventListener('input', applyFiltersAndRender);
         elements.filterIsla.addEventListener('change', applyFiltersAndRender);
         elements.filterIdioma.addEventListener('change', applyFiltersAndRender);
         elements.filterModalidad.addEventListener('change', applyFiltersAndRender);
         elements.exportCsvBtn.addEventListener('click', exportToCSV);
+        elements.clearFiltersBtn.addEventListener('click', () => {
+            elements.searchNombre.value = '';
+            elements.filterIsla.value = '';
+            elements.filterIdioma.value = '';
+            elements.filterModalidad.value = '';
+            applyFiltersAndRender();
+        });
 
+        // Eventos de ordenación de tabla
         elements.sortableHeaders.forEach(header => {
             header.addEventListener('click', (e) => {
                 const newColumn = e.target.closest('.sortable').dataset.sort;
@@ -190,12 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        elements.clearFiltersBtn.addEventListener('click', () => {
-            elements.searchNombre.value = '';
-            elements.filterIsla.value = '';
-            elements.filterIdioma.value = '';
-            elements.filterModalidad.value = '';
-            applyFiltersAndRender();
+        // NUEVO: Eventos para la ventana modal
+        elements.helpButton.addEventListener('click', openModal);
+        elements.closeModalButton.addEventListener('click', closeModal);
+        elements.okModalButton.addEventListener('click', closeModal);
+        elements.helpModalOverlay.addEventListener('click', (event) => {
+            if (event.target === elements.helpModalOverlay) {
+                closeModal();
+            }
         });
     }
 
@@ -223,6 +229,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+    
+    // NUEVO: Funciones para controlar la ventana modal
+    function openModal() {
+        elements.helpModalOverlay.classList.remove('hidden');
+        elements.helpModalOverlay.classList.add('flex');
+    }
+
+    function closeModal() {
+        elements.helpModalOverlay.classList.add('hidden');
+        elements.helpModalOverlay.classList.remove('flex');
     }
 
     function showLoader() { elements.loader.classList.remove('hidden'); }

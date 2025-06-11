@@ -19,7 +19,13 @@
 
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Buscador de Centros AICLE</h1>
+            <div class="flex justify-center items-center gap-4">
+                 <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Buscador de Centros AICLE</h1>
+                 <!-- NUEVO: Botón de Ayuda -->
+                 <button id="help-button" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full h-8 w-8 flex items-center justify-center">
+                    <i class="fa-solid fa-question"></i>
+                 </button>
+            </div>
             <p class="text-gray-600 mt-1">Curso 2025-2026 - Canarias</p>
             <p class="text-sm text-gray-500 mt-2">Creado por <a href="https://github.com/dtabuyodesigner" target="_blank" class="font-medium text-indigo-600 hover:text-indigo-500">Daniel Tabuyo de las Peñas</a></p>
         </header>
@@ -28,7 +34,6 @@
             <!-- Las tarjetas de estadísticas se insertarán aquí -->
         </div>
         
-        <!-- Contenedor para el mapa interactivo (ALTURA REDUCIDA) -->
         <div id="map-container" class="bg-white rounded-lg shadow-md mb-8">
             <div id="map" style="height: 400px; border-radius: 8px;"></div>
         </div>
@@ -94,6 +99,35 @@
         <footer class="text-center mt-8 text-sm text-gray-500">
             <p>Datos extraídos de fuentes públicas.</p>
         </footer>
+    </div>
+    
+    <!-- NUEVO: Estructura de la ventana modal de Ayuda -->
+    <div id="help-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+        <div id="help-modal" class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-xl font-bold text-gray-800">Ayuda e Información</h3>
+                <button id="close-modal-button" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div class="mt-4 text-gray-700 space-y-4">
+                <p>Esta herramienta te permite explorar los centros educativos del programa AICLE en Canarias de forma rápida e interactiva.</p>
+                <h4 class="font-bold mt-4">¿Qué puedes hacer?</h4>
+                <ul class="list-disc list-inside space-y-2">
+                    <li><b>Estadísticas rápidas:</b> En la parte superior, puedes ver un resumen del número total de centros por cada isla.</li>
+                    <li><b>Mapa Interactivo:</b> Visualiza la ubicación de los centros. El mapa se actualiza en tiempo real según tus filtros.</li>
+                    <li><b>Búsqueda inteligente:</b> Escribe en el buscador y la tabla se filtrará automáticamente, perdonando pequeños errores tipográficos.</li>
+                    <li><b>Filtros combinados:</b> Utiliza los menús desplegables para acotar tu búsqueda por isla, idioma o modalidad.</li>
+                    <li><b>Ordenar resultados:</b> Haz clic en las cabeceras de la tabla (Centro, Isla, etc.) para ordenar los resultados de forma ascendente o descendente.</li>
+                    <li><b>Exportar a CSV:</b> Descarga los datos que estás viendo en la tabla en un archivo CSV, compatible con Excel o Google Sheets, para tu propio análisis.</li>
+                </ul>
+                <h4 class="font-bold mt-6">Aviso sobre los Datos</h4>
+                <p class="border-l-4 border-yellow-400 pl-4 bg-yellow-50 p-3 rounded">
+                    Esta web es un proyecto independiente creado para facilitar la consulta de información pública. Los datos se extraen automáticamente de los documentos PDF oficiales proporcionados por la Consejería de Educación. No nos hacemos responsables de posibles imprecisiones o errores en los datos de origen. La información mostrada aquí no tiene carácter oficial.
+                </p>
+            </div>
+            <div class="text-right mt-6 border-t pt-4">
+                <button id="ok-modal-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Entendido</button>
+            </div>
+        </div>
     </div>
 
     <!-- JS de Leaflet para el mapa -->
