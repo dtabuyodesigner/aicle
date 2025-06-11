@@ -1,0 +1,5 @@
+pdfplumber
+geopy
+requests
+beautifulsoup4
+
