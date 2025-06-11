@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Referencias a elementos del DOM
+    // --- Referencias a elementos del DOM ---
     const elements = {
         loader: document.getElementById('loader-overlay'),
         tableBody: document.getElementById('results-table'),
@@ -11,90 +11,65 @@ document.addEventListener('DOMContentLoaded', () => {
         clearFiltersBtn: document.getElementById('clear-filters'),
         exportCsvBtn: document.getElementById('export-csv'),
         sortableHeaders: document.querySelectorAll('.sortable'),
-        islandStatsContainer: document.getElementById('island-stats')
+        islandStatsContainer: document.getElementById('island-stats'),
+        mapContainer: document.getElementById('map')
     };
 
+    // --- Estado de la aplicación ---
     let allData = [];
-    let fuse; // Variable para la búsqueda inteligente
-    let filteredDataCache = []; // Caché para los datos actualmente filtrados
+    let fuse;
+    let filteredDataCache = [];
+    let map;
+    let markersLayer;
+    let currentSort = { column: 'nombre', direction: 'asc' };
+    const dataUrl = 'data/centros_geocoded.json'; // Usamos el nuevo archivo con coordenadas
 
-    let currentSort = {
-        column: 'nombre',
-        direction: 'asc'
-    };
-
-    const dataUrl = 'https://raw.githubusercontent.com/dtabuyodesigner/aicle/main/data/centros.json';
-
-    // --- Carga y Preparación de Datos ---
-    async function loadData() {
+    // --- Funciones de inicialización ---
+    async function initializeApp() {
         showLoader();
+        initializeMap();
         try {
-            const response = await fetch(dataUrl);
-            if (!response.ok) throw new Error(`Error de red! status: ${response.status}`);
-            
-            allData = await response.json();
-            if (!Array.isArray(allData)) throw new Error("El archivo JSON no es un array.");
-
-            // Configuración de Fuse.js para la búsqueda inteligente
-            const fuseOptions = {
-                keys: ['nombre'],
-                includeScore: true,
-                threshold: 0.4, // Umbral de "tolerancia" a errores
-            };
-            fuse = new Fuse(allData, fuseOptions);
-            
-            displayIslandStats(allData);
-            populateFilters(allData);
-            applyFilters();
+            await loadData();
+            setupFuse();
+            populateFilters();
+            applyFiltersAndRender();
+            setupEventListeners();
         } catch (error) {
-            console.error("No se pudo cargar o procesar el archivo de datos:", error);
-            elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar los datos. Revisa la consola (F12).</td></tr>`;
+            handleLoadError(error);
         } finally {
             hideLoader();
         }
     }
 
-    // --- Lógica de la interfaz ---
-    function showLoader() {
-        elements.loader.classList.remove('hidden');
+    async function loadData() {
+        const response = await fetch(dataUrl);
+        if (!response.ok) throw new Error(`Error de red: ${response.status}`);
+        allData = await response.json();
+        if (!Array.isArray(allData)) throw new Error("El archivo JSON no es un array.");
     }
 
-    function hideLoader() {
-        elements.loader.classList.add('hidden');
+    function setupFuse() {
+        const fuseOptions = { keys: ['nombre'], includeScore: true, threshold: 0.4 };
+        fuse = new Fuse(allData, fuseOptions);
+    }
+
+    function initializeMap() {
+        map = L.map(elements.mapContainer).setView([28.4636, -16.2518], 8); // Centrado en Canarias
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        markersLayer = L.layerGroup().addTo(map);
     }
     
-    function displayIslandStats(data) {
-        const stats = data.reduce((acc, centro) => {
-            acc[centro.isla] = (acc[centro.isla] || 0) + 1;
-            return acc;
-        }, {});
-
-        const sortedIslands = Object.keys(stats).sort();
-
-        elements.islandStatsContainer.innerHTML = '';
-        sortedIslands.forEach(isla => {
-            const card = document.createElement('div');
-            card.className = 'bg-white p-4 rounded-lg shadow-md text-center';
-            card.innerHTML = `<p class="text-sm text-gray-600">${isla}</p><p class="text-2xl font-bold text-indigo-600">${stats[isla]}</p>`;
-            elements.islandStatsContainer.appendChild(card);
-        });
+    // --- Funciones de renderizado y actualización ---
+    function applyFiltersAndRender() {
+        filterData();
+        sortData();
+        renderTable();
+        updateMap();
     }
-
-    function populateFilters(data) {
-        const islas = [...new Set(data.map(item => item.isla))].sort();
-        const idiomas = [...new Set(data.map(item => item.idioma))].sort();
-        const modalidades = [...new Set(data.map(item => item.modalidad))].sort();
-
-        elements.filterIsla.innerHTML = '<option value="">Todas</option>';
-        elements.filterIdioma.innerHTML = '<option value="">Todos</option>';
-        elements.filterModalidad.innerHTML = '<option value="">Todas</option>';
-
-        islas.forEach(isla => { if (isla) elements.filterIsla.add(new Option(isla, isla)); });
-        idiomas.forEach(idioma => { if (idioma) elements.filterIdioma.add(new Option(idioma, idioma)); });
-        modalidades.forEach(modalidad => { if (modalidad) elements.filterModalidad.add(new Option(modalidad, modalidad)); });
-    }
-
-    function applyFilters() {
+    
+    function filterData() {
         const filters = {
             nombre: elements.searchNombre.value.trim(),
             isla: elements.filterIsla.value,
@@ -102,36 +77,26 @@ document.addEventListener('DOMContentLoaded', () => {
             modalidad: elements.filterModalidad.value
         };
 
-        let results = allData;
+        let results = filters.nombre ? fuse.search(filters.nombre).map(r => r.item) : allData;
 
-        // Búsqueda inteligente si hay texto en el buscador
-        if (filters.nombre) {
-            results = fuse.search(filters.nombre).map(result => result.item);
-        }
-
-        // Aplicar filtros de selectores
-        results = results.filter(item => {
-            const islaMatch = filters.isla ? item.isla === filters.isla : true;
-            const idiomaMatch = filters.idioma ? item.idioma === filters.idioma : true;
-            const modalidadMatch = filters.modalidad ? item.modalidad === filters.modalidad : true;
-            return islaMatch && idiomaMatch && modalidadMatch;
-        });
-        
-        filteredDataCache = results; // Guardamos los resultados para la exportación
-        sortData(filteredDataCache);
-        renderTable(filteredDataCache);
+        filteredDataCache = results.filter(item => 
+            (filters.isla ? item.isla === filters.isla : true) &&
+            (filters.idioma ? item.idioma === filters.idioma : true) &&
+            (filters.modalidad ? item.modalidad === filters.modalidad : true)
+        );
     }
-
-    function renderTable(data) {
+    
+    function renderTable() {
         elements.tableBody.innerHTML = '';
-        if (data.length === 0) {
-            elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 p-4">No se encontraron centros con los filtros seleccionados.</td></tr>`;
+        if (filteredDataCache.length === 0) {
+            elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 p-4">No se encontraron centros.</td></tr>`;
         } else {
-            data.forEach(item => {
+            filteredDataCache.forEach(item => {
+                const warningIcon = !item.geocoded ? `<i class="fa-solid fa-triangle-exclamation text-yellow-500 ml-2" title="Ubicación no encontrada"></i>` : '';
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
                 row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${item.nombre}</div></td>
+                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${item.nombre}${warningIcon}</div></td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.isla}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.provincia}</td>
                     <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${item.idioma}</span></td>
@@ -141,12 +106,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.tableBody.appendChild(row);
             });
         }
-        elements.resultsCount.textContent = data.length;
+        elements.resultsCount.textContent = filteredDataCache.length;
+    }
+    
+    function updateMap() {
+        markersLayer.clearLayers();
+        const geocodedCenters = filteredDataCache.filter(c => c.geocoded);
+
+        if (geocodedCenters.length > 0) {
+            geocodedCenters.forEach(center => {
+                L.marker([center.lat, center.lon])
+                    .addTo(markersLayer)
+                    .bindPopup(`<b>${center.nombre}</b><br>${center.isla}`);
+            });
+            // Ajustar el zoom del mapa para que se vean todos los marcadores
+            map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
+        }
     }
 
-    // --- Funcionalidades Adicionales ---
-    function sortData(data) {
-        data.sort((a, b) => {
+    function populateFilters() {
+        const getUniqueSorted = (key) => [...new Set(allData.map(item => item[key]))].filter(Boolean).sort();
+        const islas = getUniqueSorted('isla');
+        const idiomas = getUniqueSorted('idioma');
+        const modalidades = getUniqueSorted('modalidad');
+
+        const populateSelect = (select, options) => {
+            select.innerHTML = `<option value="">${select === elements.filterIsla ? 'Todas' : 'Todos'}</option>`;
+            options.forEach(opt => select.add(new Option(opt, opt)));
+        };
+        
+        populateSelect(elements.filterIsla, islas);
+        populateSelect(elements.filterIdioma, idiomas);
+        populateSelect(elements.filterModalidad, modalidades);
+    }
+    
+    function displayIslandStats() {
+        const stats = allData.reduce((acc, c) => { acc[c.isla] = (acc[c.isla] || 0) + 1; return acc; }, {});
+        elements.islandStatsContainer.innerHTML = Object.keys(stats).sort().map(isla => `
+            <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <p class="text-sm text-gray-600">${isla}</p>
+                <p class="text-2xl font-bold text-indigo-600">${stats[isla]}</p>
+            </div>
+        `).join('');
+    }
+
+    // --- Lógica de eventos y utilidades ---
+    function sortData() {
+        filteredDataCache.sort((a, b) => {
             const valA = a[currentSort.column] || '';
             const valB = b[currentSort.column] || '';
             if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
@@ -155,49 +161,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function exportToCSV() {
-        const headers = ["Codigo", "Nombre", "Isla", "Provincia", "Idioma", "Modalidad", "Tipo Centro"];
-        const rows = filteredDataCache.map(centro => 
-            [
-                `"${centro.codigo}"`,
-                `"${centro.nombre.replace(/"/g, '""')}"`, // Escapar comillas dobles
-                `"${centro.isla}"`,
-                `"${centro.provincia}"`,
-                `"${centro.idioma}"`,
-                `"${centro.modalidad}"`,
-                `"${centro.tipo_centro}"`
-            ].join(',')
-        );
-
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(',')].concat(rows).join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "centros_aicle.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-    
-    // --- Event Listeners ---
     function setupEventListeners() {
-        elements.searchNombre.addEventListener('input', applyFilters);
-        elements.filterIsla.addEventListener('change', applyFilters);
-        elements.filterIdioma.addEventListener('change', applyFilters);
-        elements.filterModalidad.addEventListener('change', applyFilters);
+        ['input', 'change'].forEach(evt => {
+            elements.searchNombre.addEventListener(evt, applyFiltersAndRender);
+            elements.filterIsla.addEventListener(evt, applyFiltersAndRender);
+            elements.filterIdioma.addEventListener(evt, applyFiltersAndRender);
+            elements.filterModalidad.addEventListener(evt, applyFiltersAndRender);
+        });
+
         elements.exportCsvBtn.addEventListener('click', exportToCSV);
 
         elements.sortableHeaders.forEach(header => {
             header.addEventListener('click', (e) => {
                 const newColumn = e.target.closest('.sortable').dataset.sort;
-                if (currentSort.column === newColumn) {
-                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    currentSort.column = newColumn;
-                    currentSort.direction = 'asc';
-                }
+                currentSort.direction = currentSort.column === newColumn && currentSort.direction === 'asc' ? 'desc' : 'asc';
+                currentSort.column = newColumn;
                 updateSortIcons();
-                applyFilters();
+                applyFiltersAndRender();
             });
         });
 
@@ -206,22 +186,37 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.filterIsla.value = '';
             elements.filterIdioma.value = '';
             elements.filterModalidad.value = '';
-            applyFilters();
+            applyFiltersAndRender();
         });
     }
 
     function updateSortIcons() {
         elements.sortableHeaders.forEach(header => {
             header.classList.remove('asc', 'desc');
-            if (header.dataset.sort === currentSort.column) {
-                header.classList.add(currentSort.direction);
-            }
+            if (header.dataset.sort === currentSort.column) header.classList.add(currentSort.direction);
         });
     }
+    
+    function exportToCSV() {
+        const headers = ["Codigo", "Nombre", "Isla", "Provincia", "Idioma", "Modalidad", "Tipo Centro", "Geocoded"];
+        const rows = filteredDataCache.map(c => [
+            `"${c.codigo}"`, `"${c.nombre.replace(/"/g, '""')}"`, `"${c.isla}"`, `"${c.provincia}"`,
+            `"${c.idioma}"`, `"${c.modalidad}"`, `"${c.tipo_centro}"`, `"${c.geocoded}"`
+        ].join(','));
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(',')].concat(rows).join("\n");
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", "centros_aicle_filtrados.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 
-    // --- Inicialización ---
-    loadData();
-    setupEventListeners();
-    updateSortIcons();
+    function showLoader() { elements.loader.classList.remove('hidden'); }
+    function hideLoader() { elements.loader.classList.add('hidden'); }
+    function handleLoadError(error) { console.error(error); elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar datos.</td></tr>`; }
+
+    // --- Ejecución ---
+    initializeApp();
 });
 
