@@ -60,11 +60,17 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* --- ESTILOS PARA LA VENTANA MODAL DE AYUDA --- */
+/* --- ESTILOS PARA LA VENTANA MODAL DE AYUDA (CORREGIDO) --- */
 #help-modal-overlay {
-    /* CORRECCIÓN: Se añade un z-index alto para que se muestre sobre el mapa */
+    position: fixed; /* Asegura que cubra toda la ventana */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 10000; 
+    /* Las clases de Tailwind 'flex' y 'items-center' ya se encargan del centrado */
 }
+
 
 /* Estilo para popups del mapa */
 .leaflet-popup-content-wrapper {
