@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
         filterIdioma: document.getElementById('filter-idioma'),
         filterModalidad: document.getElementById('filter-modalidad'),
         clearFiltersBtn: document.getElementById('clear-filters'),
-        sortableHeaders: document.querySelectorAll('.sortable')
+        sortableHeaders: document.querySelectorAll('.sortable'),
+        // NUEVO: Referencia a la sección de estadísticas
+        islandStatsContainer: document.getElementById('island-stats')
     };
 
     let allData = [];
@@ -17,21 +19,50 @@ document.addEventListener('DOMContentLoaded', () => {
         direction: 'asc'
     };
 
+    const dataUrl = 'https://raw.githubusercontent.com/dtabuyodesigner/aicle/main/data/centros.json';
+
     // --- Carga y Preparación de Datos ---
     async function loadData() {
         try {
-            const response = await fetch('data/centros.json');
+            const response = await fetch(dataUrl);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`Error de red! status: ${response.status}`);
             }
             allData = await response.json();
+            if (!Array.isArray(allData)) {
+               throw new Error("El archivo JSON no contiene un array de datos.");
+            }
+            // NUEVO: Llamamos a las nuevas funciones al cargar los datos
+            displayIslandStats(allData);
             populateFilters(allData);
             applyFilters();
         } catch (error) {
-            console.error("No se pudo cargar el archivo de datos:", error);
-            elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar los datos. Asegúrate de que el archivo 'data/centros.json' existe y es accesible.</td></tr>`;
+            console.error("No se pudo cargar o procesar el archivo de datos:", error);
+            elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar los datos. Revisa la consola para más detalles (F12).</td></tr>`;
         }
     }
+
+    // NUEVO: Función para mostrar estadísticas por isla
+    function displayIslandStats(data) {
+        const stats = data.reduce((acc, centro) => {
+            acc[centro.isla] = (acc[centro.isla] || 0) + 1;
+            return acc;
+        }, {});
+
+        const sortedIslands = Object.keys(stats).sort();
+
+        elements.islandStatsContainer.innerHTML = ''; // Limpiamos el contenedor
+        sortedIslands.forEach(isla => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-lg shadow-md text-center';
+            card.innerHTML = `
+                <p class="text-sm text-gray-600">${isla}</p>
+                <p class="text-2xl font-bold text-indigo-600">${stats[isla]}</p>
+            `;
+            elements.islandStatsContainer.appendChild(card);
+        });
+    }
+
 
     function populateFilters(data) {
         const islas = [...new Set(data.map(item => item.isla))].sort();
