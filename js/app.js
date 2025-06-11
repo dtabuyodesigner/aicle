@@ -20,9 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let fuse;
     let filteredDataCache = [];
     let map;
-    let markersLayer;
+    let markersLayer; // Se inicializará más tarde
     let currentSort = { column: 'nombre', direction: 'asc' };
-    const dataUrl = 'data/centros_geocoded.json'; // Usamos el nuevo archivo con coordenadas
+    
+    // URL correcta y definitiva al archivo de datos en tu repositorio
+    const dataUrl = 'https://raw.githubusercontent.com/dtabuyodesigner/aicle/main/data/centros_geocoded.json';
 
     // --- Funciones de inicialización ---
     async function initializeApp() {
@@ -31,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await loadData();
             setupFuse();
+            displayIslandStats(allData); // Se movió aquí para que siempre se muestre
             populateFilters();
             applyFiltersAndRender();
             setupEventListeners();
@@ -43,9 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadData() {
         const response = await fetch(dataUrl);
-        if (!response.ok) throw new Error(`Error de red: ${response.status}`);
+        if (!response.ok) {
+            // Este error se mostrará si la URL es incorrecta o el archivo no existe
+            throw new Error(`Error de red: ${response.status}. No se pudo encontrar el archivo en ${dataUrl}`);
+        }
         allData = await response.json();
-        if (!Array.isArray(allData)) throw new Error("El archivo JSON no es un array.");
+        if (!Array.isArray(allData)) {
+            throw new Error("El archivo JSON no es un array válido.");
+        }
     }
 
     function setupFuse() {
@@ -58,7 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-        markersLayer = L.layerGroup().addTo(map);
+        // CORRECCIÓN: Usamos L.featureGroup() en lugar de L.layerGroup()
+        // L.featureGroup() SÍ tiene el método getBounds() que necesitamos.
+        markersLayer = L.featureGroup().addTo(map);
     }
     
     // --- Funciones de renderizado y actualización ---
@@ -92,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 p-4">No se encontraron centros.</td></tr>`;
         } else {
             filteredDataCache.forEach(item => {
-                const warningIcon = !item.geocoded ? `<i class="fa-solid fa-triangle-exclamation text-yellow-500 ml-2" title="Ubicación no encontrada"></i>` : '';
+                const warningIcon = !item.geocoded ? `<i class="fa-solid fa-triangle-exclamation text-yellow-500 ml-2" title="Ubicación no encontrada en el mapa"></i>` : '';
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
                 row.innerHTML = `
@@ -111,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateMap() {
         markersLayer.clearLayers();
-        const geocodedCenters = filteredDataCache.filter(c => c.geocoded);
+        const geocodedCenters = filteredDataCache.filter(c => c.geocoded && c.lat && c.lon);
 
         if (geocodedCenters.length > 0) {
             geocodedCenters.forEach(center => {
@@ -119,8 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     .addTo(markersLayer)
                     .bindPopup(`<b>${center.nombre}</b><br>${center.isla}`);
             });
-            // Ajustar el zoom del mapa para que se vean todos los marcadores
-            map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
+            map.fitBounds(markersLayer.getBounds(), { padding: [50, 50], maxZoom: 14 });
+        } else {
+            // Si no hay resultados geocodificados, volvemos a la vista general de Canarias
+            map.setView([28.4636, -16.2518], 8);
         }
     }
 
@@ -130,18 +142,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const idiomas = getUniqueSorted('idioma');
         const modalidades = getUniqueSorted('modalidad');
 
-        const populateSelect = (select, options) => {
-            select.innerHTML = `<option value="">${select === elements.filterIsla ? 'Todas' : 'Todos'}</option>`;
+        const populateSelect = (select, options, defaultText) => {
+            select.innerHTML = `<option value="">${defaultText}</option>`;
             options.forEach(opt => select.add(new Option(opt, opt)));
         };
         
-        populateSelect(elements.filterIsla, islas);
-        populateSelect(elements.filterIdioma, idiomas);
-        populateSelect(elements.filterModalidad, modalidades);
+        populateSelect(elements.filterIsla, islas, 'Todas');
+        populateSelect(elements.filterIdioma, idiomas, 'Todos');
+        populateSelect(elements.filterModalidad, modalidades, 'Todas');
     }
     
-    function displayIslandStats() {
-        const stats = allData.reduce((acc, c) => { acc[c.isla] = (acc[c.isla] || 0) + 1; return acc; }, {});
+    function displayIslandStats(data) {
+        const stats = data.reduce((acc, c) => { if(c.isla) { acc[c.isla] = (acc[c.isla] || 0) + 1; } return acc; }, {});
         elements.islandStatsContainer.innerHTML = Object.keys(stats).sort().map(isla => `
             <div class="bg-white p-4 rounded-lg shadow-md text-center">
                 <p class="text-sm text-gray-600">${isla}</p>
@@ -162,13 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupEventListeners() {
-        ['input', 'change'].forEach(evt => {
-            elements.searchNombre.addEventListener(evt, applyFiltersAndRender);
-            elements.filterIsla.addEventListener(evt, applyFiltersAndRender);
-            elements.filterIdioma.addEventListener(evt, applyFiltersAndRender);
-            elements.filterModalidad.addEventListener(evt, applyFiltersAndRender);
-        });
-
+        elements.searchNombre.addEventListener('input', applyFiltersAndRender);
+        elements.filterIsla.addEventListener('change', applyFiltersAndRender);
+        elements.filterIdioma.addEventListener('change', applyFiltersAndRender);
+        elements.filterModalidad.addEventListener('change', applyFiltersAndRender);
         elements.exportCsvBtn.addEventListener('click', exportToCSV);
 
         elements.sortableHeaders.forEach(header => {
@@ -198,6 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function exportToCSV() {
+        if (filteredDataCache.length === 0) {
+            alert("No hay datos para exportar.");
+            return;
+        }
         const headers = ["Codigo", "Nombre", "Isla", "Provincia", "Idioma", "Modalidad", "Tipo Centro", "Geocoded"];
         const rows = filteredDataCache.map(c => [
             `"${c.codigo}"`, `"${c.nombre.replace(/"/g, '""')}"`, `"${c.isla}"`, `"${c.provincia}"`,
@@ -214,7 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showLoader() { elements.loader.classList.remove('hidden'); }
     function hideLoader() { elements.loader.classList.add('hidden'); }
-    function handleLoadError(error) { console.error(error); elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4">Error al cargar datos.</td></tr>`; }
+    function handleLoadError(error) { 
+        console.error("Error detallado:", error); 
+        elements.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-4"><b>Error al cargar los datos.</b><br><span class="text-xs text-gray-600">Asegúrate de que el archivo 'centros_geocoded.json' está subido en la carpeta 'data' de tu repositorio.</span></td></tr>`; 
+    }
 
     // --- Ejecución ---
     initializeApp();
