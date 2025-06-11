@@ -60,7 +60,13 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* NUEVO: Estilo para popups del mapa */
+/* --- ESTILOS PARA LA VENTANA MODAL DE AYUDA --- */
+#help-modal-overlay {
+    /* CORRECCIÓN: Se añade un z-index alto para que se muestre sobre el mapa */
+    z-index: 10000; 
+}
+
+/* Estilo para popups del mapa */
 .leaflet-popup-content-wrapper {
     border-radius: 8px;
 }
